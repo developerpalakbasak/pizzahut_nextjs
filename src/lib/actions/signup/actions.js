@@ -1,7 +1,8 @@
 "use server";
 
-import bcrypt from "bcryptjs";
+import { ConnectDB } from "@/lib/config/db";
 import UserModel from "@/lib/models/userModel";
+import bcrypt from "bcryptjs";
 
 export async function signUp(formData) {
   //   const email = formData.get('email')
@@ -14,6 +15,7 @@ export async function signUp(formData) {
     return { success: false, message: "Passwords must be same" };
   }
 
+  await ConnectDB()
   const isUserAvailableInDb = await UserModel.findOne({email})
 console.log(isUserAvailableInDb)
 

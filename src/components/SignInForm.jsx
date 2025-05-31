@@ -57,7 +57,6 @@ const SignInForm = () => {
   const handleSubmitSignUp = async (e) => {
     e.preventDefault();
     const actionRes = await signUp({ name, email, password, reTypedPassword });
-    console.log(actionRes);
 
     if (!actionRes.success && actionRes.message == "duplicate user") {
       alert("You have already registerd please sign in");
@@ -70,7 +69,7 @@ const SignInForm = () => {
       password,
     });
 
-    console.log(res);
+  
     if (res?.ok) {
       router.push("/");
     } else {

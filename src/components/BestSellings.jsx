@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import ContentItem from "./ContentItem";
 import { usePizza } from "@/context/pizzaContext";
 import { useCart } from "@/context/cartContext";
