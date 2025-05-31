@@ -43,3 +43,6 @@ a {
 li > a {
   @apply hover:text-primary;
 }
+button{
+  cursor: pointer;
+}
