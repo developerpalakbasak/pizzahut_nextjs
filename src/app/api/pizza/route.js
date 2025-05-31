@@ -1,29 +1,29 @@
 import { ConnectDB } from "@/lib/config/db";
 import PizzaModel from "@/lib/models/pizzaModel";
-import { mkdir, writeFile } from "fs/promises";
+import { writeFile } from "fs/promises";
 import uploadOnCloudinary from "@/lib/config/uploadOnCloudinary";
 import cloudinary from "@/lib/config/cloudinaryConfig";
 const { NextResponse } = require("next/server");
 
+// Connect to the database once
 const loadDB = async () => {
   await ConnectDB();
 };
-
 loadDB();
 
-// api endpoint to get all pizzas
+// GET all pizzas
 export async function GET() {
   const allPizza = await PizzaModel.find({});
   const pizzaCount = allPizza.length;
   return NextResponse.json({ success: true, pizzaCount, allPizza });
 }
 
-// api endpoint to add pizza
+// POST a new pizza
 export async function POST(request) {
   try {
     const formData = await request.formData();
-
     const image = formData.get("image");
+
     if (!image) {
       return NextResponse.json(
         { success: false, msg: "Image is required" },
@@ -33,24 +33,19 @@ export async function POST(request) {
 
     const imageByteData = await image.arrayBuffer();
     const buffer = Buffer.from(imageByteData);
-    const tempFilePath = `./public/temp/${Date.now()}_${image.name}`;
-    // Ensure temp directory exists
-    await mkdir("./public/temp", { recursive: true });
+    const tempFilePath = `/tmp/${Date.now()}_${image.name}`;
 
-    await writeFile(tempFilePath, buffer);
+    await writeFile(tempFilePath, buffer); // ✅ use /tmp for Vercel
 
-    // Upload to Cloudinary
     const cloudinaryResponse = await uploadOnCloudinary(tempFilePath);
 
-    // console.log(cloudinaryResponse);
-    const image_id = cloudinaryResponse.public_id;
     const pizzaData = {
       title: formData.get("title"),
       description: formData.get("description"),
       price: formData.get("price"),
       category: formData.get("category"),
       image: cloudinaryResponse.secure_url,
-      image_id,
+      image_id: cloudinaryResponse.public_id,
     };
 
     await PizzaModel.create(pizzaData);
@@ -65,12 +60,11 @@ export async function POST(request) {
   }
 }
 
-// api endpoint to update isTopSelling and isFeature
+// PUT to update isTopSelling or isFeature
 export async function PUT(request) {
   try {
     const { id, isTopSelling, isFeature } = await request.json();
 
-    // Validate the provided ID and fields
     if (!id) {
       return NextResponse.json(
         { success: false, message: "Pizza ID is required" },
@@ -78,14 +72,13 @@ export async function PUT(request) {
       );
     }
 
-    // Update the pizza document
     const updatedPizza = await PizzaModel.findByIdAndUpdate(
       id,
       {
         ...(isTopSelling !== undefined && { isTopSelling }),
         ...(isFeature !== undefined && { isFeature }),
       },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
     if (!updatedPizza) {
@@ -113,30 +106,27 @@ export async function PUT(request) {
   }
 }
 
-// api endpoint to delete pizza
+// DELETE a pizza
 export async function DELETE(request) {
-  const id = await request.nextUrl.searchParams.get("id");
-
-  const pizza = await PizzaModel.findById(id);
-  console.log(pizza)
-
-  if (!pizza) {
-    return NextResponse.json({ msg: "item not found" }, { status: 404 });
-  }
+  const id = request.nextUrl.searchParams.get("id");
 
   try {
-    // delete image from cloudinary
+    const pizza = await PizzaModel.findById(id);
+
+    if (!pizza) {
+      return NextResponse.json({ msg: "Item not found" }, { status: 404 });
+    }
+
     const cloudinaryResponse = await cloudinary.uploader.destroy(
       pizza.image_id
     );
 
     if (cloudinaryResponse.result === "ok") {
-      // delete from database
       await PizzaModel.findByIdAndDelete(id);
       return NextResponse.json({ msg: "Pizza deleted" }, { status: 200 });
     }
 
-    return NextResponse.json({ msg: "Falied to delete" }, { status: 500 });
+    return NextResponse.json({ msg: "Failed to delete image" }, { status: 500 });
   } catch (error) {
     console.error("DELETE error:", error);
     return NextResponse.json({ msg: "Internal Server Error" }, { status: 500 });
